@@ -27,6 +27,12 @@ def main() -> None:
         epilog='Made by Jort van Leenen')
     parser.add_argument('-s', '--shallow', action='store_true', default=False,
                         help='Only compare metadata, not checksums')
+    parser.add_argument('-f', '--fix', action='store_true',
+                        help='Fix all file differences automatically')
+    parser.add_argument('-fc', '--fixchecksum', action='store_true',
+                        help='Only fix checksum mismatches automatically')
+    parser.add_argument('-fm', '--fixmissing', action='store_true',
+                        help='Only fix missing file errors automatically')
     parser.add_argument('first_directory', help='The original directory')
     parser.add_argument('second_directory', help='The copy directory')
     args = parser.parse_args()
@@ -44,7 +50,7 @@ def main() -> None:
         print("The directory paths are the same, no need to check.")
         return
 
-    check_hashes(first_directory, second_directory, args.shallow)
+    check_hashes(first_directory, second_directory, args)
 
 
 def repair_error(error_dict: dict) -> None:
@@ -54,34 +60,16 @@ def repair_error(error_dict: dict) -> None:
     """
     for src, dst in error_dict.items():
         try:
-            shutil.copy(src, dst)
+            if not os.path.isdir(dst):
+                os.makedirs(dst)
+            shutil.copy2(str(src), str(dst))
             print(f"FIXED: '{src}' to '{dst}'")
         except OSError as e:
             print(f"ERROR: '{src}' to '{dst}' failed: {e.strerror}")
 
 
-def check_hashes_result(found_error, mismatches, missing_files) -> None:
-    """Print the result of the check_hashes function and, if found, ask the user
-     if they want to attempt to fix the errors.
-
-    @param found_error whether an error was found
-    @param mismatches the dictionary containing the checksum mismatches
-    @param missing_files the dictionary containing the missing files
-    """
-    print("Done!")
-    if not found_error:
-        print("No mismatches found.")
-    else:
-        if len(mismatches) > 0 and \
-                input("Attempt to fix mismatches? (y/n)").lower() == 'y':
-            repair_error(mismatches)
-        if len(missing_files) > 0 and \
-                input("Attempt to fix missing files? (y/n)").lower() == 'y':
-            repair_error(missing_files)
-
-
 def check_hashes(first_directory: str, second_directory: str,
-                 shallow_flag: bool) -> None:
+                 args) -> None:
     """Check if the files in the first directory are the same as the files
     in the second directory.
 
@@ -89,7 +77,7 @@ def check_hashes(first_directory: str, second_directory: str,
 
     @param first_directory the first/original directory
     @param second_directory the second/copy directory
-    @param shallow_flag True when only checking metadata and not checksums
+    @param args the arguments passed to the script
     """
     found_error = False
     checksum_mismatches = {}
@@ -100,7 +88,7 @@ def check_hashes(first_directory: str, second_directory: str,
             first_path = os.path.join(root, file)
             second_path = first_path.replace(first_directory, second_directory)
             if os.path.isfile(second_path):
-                if not filecmp.cmp(first_path, second_path, shallow_flag):
+                if not filecmp.cmp(first_path, second_path, args.shallow):
                     print(f"NOT EQUAL: '{first_path}, '{second_path}'")
                     found_error = True
                     checksum_mismatches[first_path] \
@@ -110,7 +98,12 @@ def check_hashes(first_directory: str, second_directory: str,
                       f"'{second_path.replace(file, '')}'")
                 found_error = True
                 missing_files[first_path] = second_path.replace(file, '')
-    check_hashes_result(found_error, checksum_mismatches, missing_files)
+    print("Done.") if found_error else print("Done, no differences found.")
+
+    if len(missing_files) > 0 and (args.fix or args.fixmissing):
+        repair_error(missing_files)
+    if len(checksum_mismatches) > 0 and (args.fix or args.fixchecksum):
+        repair_error(checksum_mismatches)
 
 
 if __name__ == "__main__":
