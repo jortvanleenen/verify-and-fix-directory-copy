@@ -91,10 +91,10 @@ def check_hashes_result(found_error, mismatches, missing_files) -> None:
     @param mismatches the dictionary containing the checksum mismatches
     @param missing_files the dictionary containing the missing files
     """
+    print("Done!")
     if not found_error:
         print("No mismatches found.")
     else:
-        print("Done!")
         if len(mismatches) > 0 and \
                 input("Attempt to fix mismatches? (y/n)").lower() == 'y':
             repair_error(mismatches)
