@@ -59,7 +59,7 @@ def get_valid_directory() -> str:
 
 
 def get_file_hash(file: BinaryIO) -> str:
-    """Get the XXH32 hash of a file.
+    """Get the XXH3 hash of a file.
 
     @param file the file to hash
     @return the hash as a string
