@@ -5,8 +5,7 @@ This is done recursively.
 
 It will print the files that are not equal or missing to the console.
 
-Note that it does not check if the second directory contains more files than
-the first directory.
+Note the distinction that it does not check whether two directories are equal.
 
 @file
 @author Jort van Leenen
@@ -26,11 +25,11 @@ def main() -> None:
                     " original directory to a copy directory has gone well.",
         epilog='Made by Jort van Leenen')
     parser.add_argument('-s', '--shallow', action='store_true', default=False,
-                        help='Only compare metadata, not checksums')
+                        help='Only compare certain metadata, not content')
     parser.add_argument('-f', '--fix', action='store_true',
-                        help='Fix all file differences automatically')
-    parser.add_argument('-fc', '--fixchecksum', action='store_true',
-                        help='Only fix checksum mismatches automatically')
+                        help='Fix all file errors automatically')
+    parser.add_argument('-fd', '--fixdifference', action='store_true',
+                        help='Only fix file difference errors automatically')
     parser.add_argument('-fm', '--fixmissing', action='store_true',
                         help='Only fix missing file errors automatically')
     parser.add_argument('first_directory', help='The original directory')
@@ -64,7 +63,6 @@ def check_hashes(first_directory: str, second_directory: str,
     @param second_directory the second/copy directory
     @param args the arguments passed to the script
     """
-    found_error = False
     checksum_mismatches = {}
     missing_files = {}
     print("Starting comparison... (This may take a while)")
@@ -75,20 +73,20 @@ def check_hashes(first_directory: str, second_directory: str,
             if os.path.isfile(second_path):
                 if not filecmp.cmp(first_path, second_path, args.shallow):
                     print(f"NOT EQUAL: '{first_path}, '{second_path}'")
-                    found_error = True
                     checksum_mismatches[first_path] \
                         = second_path.replace(file, '')
             else:
                 print(f"NOT EXIST: '{first_path}' in "
                       f"'{second_path.replace(file, '')}'")
-                found_error = True
                 missing_files[first_path] = second_path.replace(file, '')
-    print("Done.") if found_error else print("Done, no differences found.")
-
-    if len(missing_files) > 0 and (args.fix or args.fixmissing):
-        repair_error(missing_files)
-    if len(checksum_mismatches) > 0 and (args.fix or args.fixchecksum):
-        repair_error(checksum_mismatches)
+    if len(checksum_mismatches) > 0 or len(missing_files) > 0:
+        print("Done.")
+        if len(missing_files) > 0 and (args.fix or args.fixmissing):
+            repair_error(missing_files)
+        if len(checksum_mismatches) > 0 and (args.fix or args.fixdifference):
+            repair_error(checksum_mismatches)
+    else:
+        print("Done, no file errors found.")
 
 
 def repair_error(error_dict: dict) -> None:
