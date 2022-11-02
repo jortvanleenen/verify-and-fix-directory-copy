@@ -12,26 +12,28 @@ the first directory.
 @author Jort van Leenen
 @copyright GNU General Public License v3.0
 """
+import filecmp
 import shutil
 import sys
 import os
-import xxhash
-from typing import BinaryIO
+import argparse
 
 
 def main() -> None:
     """Entry point of the script."""
-    if len(sys.argv) < 3:
-        print("This program recursively checks if a copy from an original "
-              "directory to a copy directory has gone well.")
-        print("Please enter the first/original directory:")
-        first_directory = get_valid_directory()
-        print("Please enter the second/copy directory:")
-        second_directory = get_valid_directory()
-    else:
-        # Prefix/suffix removal convenience for Windows 'Copy to path' users.
-        first_directory = sys.argv[1].removeprefix("'").removesuffix("'")
-        second_directory = sys.argv[2].removeprefix("'").removesuffix("'")
+    parser = argparse.ArgumentParser(
+        description="This program recursively checks if a copy from an"
+                    " original directory to a copy directory has gone well.",
+        epilog='Made by Jort van Leenen')
+    parser.add_argument('-s', '--shallow', action='store_true', default=False,
+                        help='Only compare metadata, not checksums')
+    parser.add_argument('first_directory', help='The original directory')
+    parser.add_argument('second_directory', help='The copy directory')
+    args = parser.parse_args()
+
+    # Prefix/suffix removal convenience for Windows 'Copy to path' users.
+    first_directory = args.first_directory.removeprefix("'").removesuffix("'")
+    second_directory = args.second_directory.removeprefix("'").removesuffix("'")
 
     if not os.path.isdir(first_directory) \
             or not os.path.isdir(second_directory):
@@ -42,32 +44,7 @@ def main() -> None:
         print("The directory paths are the same, no need to check.")
         return
 
-    check_hashes(first_directory, second_directory)
-
-
-def get_valid_directory() -> str:
-    """Get a valid directory from the user through the CLI.
-
-    @return the directory as a string
-    """
-    while True:
-        path = input().removeprefix('"').removesuffix('"')
-        if os.path.isdir(path):
-            return path
-        else:
-            print("Not a valid directory, please try again.")
-
-
-def get_file_hash(file: BinaryIO) -> str:
-    """Get the XXH3 hash of a file.
-
-    @param file the file to hash
-    @return the hash as a string
-    """
-    file_hash = xxhash.xxh3_64()
-    for byte_block in iter(lambda: file.read(4096), b""):
-        file_hash.update(byte_block)
-    return file_hash.hexdigest()
+    check_hashes(first_directory, second_directory, args.shallow)
 
 
 def repair_error(error_dict: dict) -> None:
@@ -103,7 +80,8 @@ def check_hashes_result(found_error, mismatches, missing_files) -> None:
             repair_error(missing_files)
 
 
-def check_hashes(first_directory: str, second_directory: str) -> None:
+def check_hashes(first_directory: str, second_directory: str,
+                 shallow_flag: bool) -> None:
     """Check if the files in the first directory are the same as the files
     in the second directory.
 
@@ -111,6 +89,7 @@ def check_hashes(first_directory: str, second_directory: str) -> None:
 
     @param first_directory the first/original directory
     @param second_directory the second/copy directory
+    @param shallow_flag True when only checking metadata and not checksums
     """
     found_error = False
     checksum_mismatches = {}
@@ -121,15 +100,11 @@ def check_hashes(first_directory: str, second_directory: str) -> None:
             first_path = os.path.join(root, file)
             second_path = first_path.replace(first_directory, second_directory)
             if os.path.isfile(second_path):
-                with open(first_path, "rb") as first_file, \
-                        open(second_path, "rb") as second_file:
-                    first_hash = get_file_hash(first_file)
-                    second_hash = get_file_hash(second_file)
-                    if first_hash != second_hash:
-                        print(f"NOT EQUAL: '{first_path}, '{second_path}'")
-                        found_error = True
-                        checksum_mismatches[first_path] \
-                            = second_path.replace(file, '')
+                if not filecmp.cmp(first_path, second_path, shallow_flag):
+                    print(f"NOT EQUAL: '{first_path}, '{second_path}'")
+                    found_error = True
+                    checksum_mismatches[first_path] \
+                        = second_path.replace(file, '')
             else:
                 print(f"NOT EXIST: '{first_path}' in "
                       f"'{second_path.replace(file, '')}'")
