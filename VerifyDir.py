@@ -53,21 +53,6 @@ def main() -> None:
     check_hashes(first_directory, second_directory, args)
 
 
-def repair_error(error_dict: dict) -> None:
-    """Attempt to fix the file errors in the error list.
-
-    @param error_dict the dictionary containing file errors, src: dest
-    """
-    for src, dst in error_dict.items():
-        try:
-            if not os.path.isdir(dst):
-                os.makedirs(dst)
-            shutil.copy2(str(src), str(dst))
-            print(f"FIXED: '{src}' to '{dst}'")
-        except OSError as e:
-            print(f"ERROR: '{src}' to '{dst}' failed: {e.strerror}")
-
-
 def check_hashes(first_directory: str, second_directory: str,
                  args) -> None:
     """Check if the files in the first directory are the same as the files
@@ -104,6 +89,21 @@ def check_hashes(first_directory: str, second_directory: str,
         repair_error(missing_files)
     if len(checksum_mismatches) > 0 and (args.fix or args.fixchecksum):
         repair_error(checksum_mismatches)
+
+
+def repair_error(error_dict: dict) -> None:
+    """Attempt to fix the file errors in the error list.
+
+    @param error_dict the dictionary containing file errors. src -> dst (copy)
+    """
+    for src, dst in error_dict.items():
+        try:
+            if not os.path.isdir(dst):
+                os.makedirs(dst)
+            shutil.copy2(str(src), str(dst))
+            print(f"FIXED: '{src}' to '{dst}'")
+        except OSError as e:
+            print(f"ERROR: '{src}' to '{dst}' failed: {e.strerror}")
 
 
 if __name__ == "__main__":
