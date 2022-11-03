@@ -14,6 +14,7 @@ The script goes over the files of the original/first directory recursively, per 
 ## How to use
 1. Download and run the script, e.g. `./VerifyDir.py <optional arguments, see -h/--help> [first directory] [second 
    directory]`.
+*Note: do not use a version below v2.0.0 for fixing file errors, as it contains a bug that can result in the failure of some fixes.*
 
 If `-s/--shallow` is provided, only some of the files' metadata is compared to increase speed. By default we look at the content (checksum) and size.\
 If `-f/--fix` is provided, the program automatically attempts to fix missing files and checksum mismatches.\
