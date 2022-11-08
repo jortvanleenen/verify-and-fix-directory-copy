@@ -102,10 +102,9 @@ def repair_error(error_dict: dict) -> None:
             shutil.copy2(str(src), str(dst))
             print(f"FIXED: '{src}' to '{dst}'")
         except OSError as e:
-            # add 3-tuple of src, dst and exception
-            unfixed_errors.append((src, dst, e))
-    for src, dst, e in unfixed_errors:
-        print(f"ERROR: '{src}' to '{dst}' failed: {e.strerror}")
+            unfixed_errors.append((src, dst, e.strerror))
+    for src, dst, error in unfixed_errors:
+        print(f"ERROR: '{src}' to '{dst}' failed: {error}")
 
 
 if __name__ == "__main__":
